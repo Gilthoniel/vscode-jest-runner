@@ -25,7 +25,14 @@ const SUCCESS_DECORATOR = window.createTextEditorDecorationType({
   rangeBehavior: DecorationRangeBehavior.ClosedClosed,
 });
 
+/**
+ * Update the active document with the results of the test
+ */
 class TestTextDecorations {
+  /**
+   * Get the active document and search for the result of the tests
+   * but doesn't run if not found
+   */
   update() {
     const editor = window.activeTextEditor;
     const { document } = editor;
@@ -35,9 +42,14 @@ class TestTextDecorations {
       return;
     }
 
-    exec.then((result) => this.updateWithResult(result, editor));
+    return exec.then((result) => this.updateWithResult(result, editor));
   }
 
+  /**
+   * Iterate over the describes to generate the decorations
+   * @param {JestTestResult} result 
+   * @param {TextEditor} editor 
+   */
   updateWithResult(result, editor) {
     const { document } = editor;
     const describes = FileParser.parse(document);
@@ -46,9 +58,11 @@ class TestTextDecorations {
       describe.tests.forEach((test) => {
         const testResult = result.getTestResult(test.index);
         if (testResult.hasPassed()) {
+          // If the test has passed, we only add a decoration after the it
           const line = document.lineAt(test.range.start);
           ranges.successes.push(line.range);
         } else {
+          // Else we search for the error line
           const range = this.getFailureRange(testResult, document);
           if (range) {
             ranges.failures.push(range);
@@ -65,6 +79,11 @@ class TestTextDecorations {
     editor.setDecorations(SUCCESS_DECORATOR, ranges.successes);
   }
 
+  /**
+   * Get the line of the error or return null
+   * @param {JestTestResult} result 
+   * @param {TextDocument} document 
+   */
   getFailureRange(result, document) {
     const regex = new RegExp(`${document.fileName}:([0-9]+):[0-9]+`);
     const match = result.getMessage(0).match(regex);
@@ -78,3 +97,5 @@ class TestTextDecorations {
 }
 
 module.exports = new TestTextDecorations();
+
+module.exports.TestTextDecorations = TestTextDecorations;
