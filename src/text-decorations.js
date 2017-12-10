@@ -8,7 +8,7 @@ const FAILURE_DECORATOR = window.createTextEditorDecorationType({
   after: {
     margin: '0 0 0 10px',
     color: 'rgba(230,39,57,1)',
-    contentText: '« assertion failed',
+    contentText: '« error raised here',
   },
   rangeBehavior: DecorationRangeBehavior.ClosedClosed,
 });
@@ -33,44 +33,39 @@ class TestTextDecorations {
   update() {
     const { document } = this.editor;
     const describes = FileParser.parse(document);
-    const failureLines = this.getFailureLines();
 
-    const failures = [];
-    const successes = [];
-    describes.forEach((describe) => describe.tests.forEach((test) => {
-      for (let i = 0; i < test.expects.length; i += 1) {
-        const expect = test.expects[i];
-        const line = document.lineAt(expect.range.start);
-        if (failureLines.includes(line.lineNumber)) {
-          failures.push(line.range);
-          return; // next expect have not been run
+    const reducer = (ranges, describe) => {
+      describe.tests.forEach((test) => {
+        const result = this.result.getTestResult(test.index);
+        if (result.hasPassed()) {
+          const line = document.lineAt(test.range.start);
+          ranges.successes.push(line.range);
         } else {
-          successes.push(line.range);
+          const range = this.getFailureRange(result, document);
+          if (range) {
+            ranges.failures.push(range);
+          }
         }
-      }
-    }));
+      });
 
-    this.editor.setDecorations(FAILURE_DECORATOR, failures);
-    this.editor.setDecorations(SUCCESS_DECORATOR, successes);
+      return ranges;
+    };
+
+    const ranges = describes.reduce(reducer, { failures: [], successes: [] });
+
+    this.editor.setDecorations(FAILURE_DECORATOR, ranges.failures);
+    this.editor.setDecorations(SUCCESS_DECORATOR, ranges.successes);
   }
 
-  getFailureLines() {
-    const { document } = this.editor;
+  getFailureRange(result, document) {
+    const regex = new RegExp(`${document.fileName}:([0-9]+):[0-9]+`);
+    const match = result.getMessage(0).match(regex);
 
-    return this.result.getTestResults()
-      .filter(test => test.hasFailed())
-      .map(test => {
-        const regex = new RegExp(`${document.fileName}:([0-9]+):[0-9]+`);
-        const match = test.getMessage(0).match(regex);
-    
-        if (match) {
-          const line = document.lineAt(parseInt(match[1], 10) - 1);
-    
-          return line.lineNumber;
-        }
-    
-        return -1;
-      });
+    if (match) {
+      return document.lineAt(parseInt(match[1], 10) - 1);
+    }
+
+    return null;
   }
 }
 

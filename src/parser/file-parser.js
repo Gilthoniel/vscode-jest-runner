@@ -34,7 +34,7 @@ class FileParser {
       ]
     });
 
-    this.cache[document.fileName] = ast.program.body
+    const describes = ast.program.body
       .filter(this.isDescribeStatement)
       .map((statement) => {
         const { callee, arguments: args } = statement.expression;
@@ -49,8 +49,18 @@ class FileParser {
           tests: this.parseDescribeStatement(args[1].body, document),
         }
       });
+    
+    // populate test indices
+    let index = 0;
+    describes.forEach(describe => describe.tests.forEach((test) => {
+      test.index = index;
+      index += 1;
 
-    return this.cache[document.fileName];
+      return test;
+    }));
+
+    this.cache[document.fileName] = describes;
+    return describes;
   }
 
   parseDescribeStatement(statement, document) {
@@ -72,20 +82,13 @@ class FileParser {
   }
 
   parseItStatement(statement, document) {
-    const ranges = [];
-    try {
-      this.deepSearch(statement, document, ranges)
-    } catch (e) {
-      console.log(e);
-    }
-
-    return ranges;
+    return this.deepSearch(statement, document);
   }
 
-  deepSearch(statement, document, ranges) {
+  deepSearch(statement, document) {
     if (!has(statement, 'type') && !Array.isArray(statement)) {
       // limit the search to avoid to be lost in useless objects
-      return;
+      return [];
     }
 
     if (this.isExpectStatement(statement)) {
@@ -95,15 +98,16 @@ class FileParser {
         document.positionAt(callee.end)
       );
 
-      ranges.push({ range, statement });
-      return;
+      return [{ range, statement }];
     }
 
-    Object.keys(statement).forEach((key) => {
+    return Object.keys(statement).reduce((array, key) => {
       if (statement[key] && typeof statement[key] === 'object') {
-        this.deepSearch(statement[key], document, ranges);
+        return array.concat(this.deepSearch(statement[key], document));
       }
-    });
+
+      return array;
+    }, []);
   }
 
   isDescribeStatement(statement) {
