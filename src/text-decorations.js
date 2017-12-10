@@ -1,6 +1,7 @@
 const { window, OverviewRulerLane, DecorationRangeBehavior } = require('vscode');
 
 const FileParser = require('./parser/file-parser');
+const JestRunner = require('./jest-runner');
 
 const FAILURE_DECORATOR = window.createTextEditorDecorationType({
   overviewRulerColor: 'rgba(230,39,57,1)',
@@ -25,23 +26,30 @@ const SUCCESS_DECORATOR = window.createTextEditorDecorationType({
 });
 
 class TestTextDecorations {
-  constructor(result) {
-    this.result = result;
-    this.editor = window.activeTextEditor;
+  update() {
+    const editor = window.activeTextEditor;
+    const { document } = editor;
+
+    const exec = JestRunner.has(document.fileName);
+    if (!exec) {
+      return;
+    }
+
+    exec.then((result) => this.updateWithResult(result, editor));
   }
 
-  update() {
-    const { document } = this.editor;
+  updateWithResult(result, editor) {
+    const { document } = editor;
     const describes = FileParser.parse(document);
 
     const reducer = (ranges, describe) => {
       describe.tests.forEach((test) => {
-        const result = this.result.getTestResult(test.index);
-        if (result.hasPassed()) {
+        const testResult = result.getTestResult(test.index);
+        if (testResult.hasPassed()) {
           const line = document.lineAt(test.range.start);
           ranges.successes.push(line.range);
         } else {
-          const range = this.getFailureRange(result, document);
+          const range = this.getFailureRange(testResult, document);
           if (range) {
             ranges.failures.push(range);
           }
@@ -53,8 +61,8 @@ class TestTextDecorations {
 
     const ranges = describes.reduce(reducer, { failures: [], successes: [] });
 
-    this.editor.setDecorations(FAILURE_DECORATOR, ranges.failures);
-    this.editor.setDecorations(SUCCESS_DECORATOR, ranges.successes);
+    editor.setDecorations(FAILURE_DECORATOR, ranges.failures);
+    editor.setDecorations(SUCCESS_DECORATOR, ranges.successes);
   }
 
   getFailureRange(result, document) {
@@ -69,4 +77,4 @@ class TestTextDecorations {
   }
 }
 
-module.exports = TestTextDecorations;
+module.exports = new TestTextDecorations();

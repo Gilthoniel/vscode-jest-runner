@@ -1,6 +1,12 @@
 const { CodeLens, EventEmitter } = require('vscode');
 
 const FileParser = require('./parser/file-parser');
+const JestRunner = require('./jest-runner');
+const TestTextDecorations = require('./text-decorations');
+
+const STATUS_NONE = 'None';
+const STATUS_FAIL = 'Fail';
+const STATUS_SUCCESS = 'Success';
 
 class CodeLensProvider {
   constructor() {
@@ -27,7 +33,7 @@ class CodeLensProvider {
   populateDescribeCodeLenses(describes, document) {
     describes.forEach(({ range, tests }) => {
       this.codelenses.push(new DescribeCodeLens(range, document));
-      this.codelenses.push(new StatusCodeLens(range));
+      this.codelenses.push(new StatusCodeLens(range, document));
       this.numDescribe += 1;
 
       this.populateItCodeLenses(tests, document);
@@ -37,18 +43,20 @@ class CodeLensProvider {
   populateItCodeLenses(tests, document) {
     tests.forEach(({ range }) => {
       this.codelenses.push(new ItCodeLens(range, document, this.numIt));
-      this.codelenses.push(new ItStatusCodeLens(range, this.numIt));
+      this.codelenses.push(new ItStatusCodeLens(range, document, this.numIt));
       this.numIt += 1;
     });
   }
 
   resolveCodeLens(codeLens) {
-    codeLens.resolve();
+    TestTextDecorations.update();
 
-    return codeLens;
+    return codeLens.resolve();
   }
 
   update(result) {
+    TestTextDecorations.update();
+
     this.codelenses.forEach(lens => lens.update(result));
 
     this._emitter.fire();
@@ -79,6 +87,8 @@ class ItCodeLens extends CodeLens {
       arguments: [this.document.fileName, this.testIndex],
       title: 'Details',
     };
+
+    return this;
   }
 
   update() {}
@@ -90,23 +100,33 @@ class ItCodeLens extends CodeLens {
 }
 
 class ItStatusCodeLens extends CodeLens {
-  constructor(range, itIndex) {
+  constructor(range, document, itIndex) {
     super(range);
 
+    this.document = document;
     this.index = itIndex;
   }
 
   resolve() {
-    this.command = {
-      title: 'No results',
-    };
+    const exec = JestRunner.has(this.document.fileName);
+
+    if (exec) {
+      return exec.then(this.updateFromResult.bind(this));
+    }
+
+    this.command = { title: STATUS_NONE };
+    return this;
   }
 
   update(result) {
+    this.updateFromResult(result);
+  }
+
+  updateFromResult(result) {
     if (result.getTestResult(this.index).hasFailed()) {
-      this.command = { title: 'Failed' };
+      this.command = { title: STATUS_FAIL };
     } else {
-      this.command = { title: 'Success' };
+      this.command = { title: STATUS_SUCCESS };
     }
   }
 }
@@ -124,26 +144,46 @@ class DescribeCodeLens extends CodeLens {
       arguments: [this.document.fileName],
       title: 'Run tests',
     };
+
+    return this;
   }
 
   update() {}
 }
 
 class StatusCodeLens extends CodeLens {
+  constructor(range, document) {
+    super(range);
+
+    this.document = document;
+  }
+
   resolve() {
-    this.command = {
-      title: 'No Status',
-    };
+    const exec = JestRunner.has(this.document.fileName);
+
+    if (exec) {
+      return exec.then(this.updateFromResult.bind(this));
+    }
+
+    // Test has not been run yet
+    this.command = { title: STATUS_NONE };
+    return this;
   }
 
   update(result) {
+    this.updateFromResult(result);
+  }
+
+  updateFromResult(result) {
     this.command = this.command || {};
 
     if (result.hasFailure()) {
-      this.command.title = 'Failed';
+      this.command.title = STATUS_FAIL;
     } else {
-      this.command.title = 'Success';
+      this.command.title = STATUS_SUCCESS;
     }
+
+    return this;
   }
 }
 

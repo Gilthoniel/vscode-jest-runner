@@ -1,7 +1,6 @@
 const { exec } = require('child_process');
 const vscode = require('vscode');
 
-const TestTextDecorations = require('./text-decorations');
 const JestParser = require('./parser/jest-parser');
 
 class JestRunner {
@@ -53,8 +52,6 @@ class JestRunner {
         this.output.show(true);
         this._outputHeader(filename);
         this.output.appendLine('Click on each individual test for the details of the result.');
-
-        new TestTextDecorations(result).update();
 
         if (this.codeLensProvider) {
           this.codeLensProvider.update(result);
