@@ -32,16 +32,18 @@ class JestRunner {
     test.then(result => this.output.append(result.getTestResult(testIndex).getMessage()));
   }
 
-  run(filename, nocache = false) {
-    this.output.appendLine('Running tests ...');
+  run(fileName, nocache = false) {
+    this._outputHeader(fileName);
+    this.output.appendLine('Running tests ... (might take some time)');
+
     const workspace = vscode.workspace.workspaceFolders[0].uri.fsPath;
 
-    if (!nocache && this.cache[filename]) {
-      return this.cache[filename];
+    if (!nocache && this.cache[fileName]) {
+      return this.cache[fileName];
     }
 
-    this.cache[filename] = new Promise((resolve, reject) => {
-      exec(`CI=true npm test -- --json ${filename}`, { cwd: workspace }, (err, stdout) => {
+    this.cache[fileName] = new Promise((resolve, reject) => {
+      exec(`CI=true npm test -- --json ${fileName}`, { cwd: workspace }, (err, stdout) => {
         if (err) {
           reject(err);
           return;
@@ -49,9 +51,12 @@ class JestRunner {
 
         const result = JestParser(stdout);
 
-        this.output.show(true);
-        this._outputHeader(filename);
-        this.output.appendLine('Click on each individual test for the details of the result.');
+        this._outputHeader(fileName);
+        if (result.hasFailure()) {
+          this.output.appendLine('Tests end with failures!');
+        } else {
+          this.output.appendLine('Tests end with success!');
+        }
 
         if (this.codeLensProvider) {
           this.codeLensProvider.update(result);
@@ -61,11 +66,12 @@ class JestRunner {
       });
     });
 
-    return this.cache[filename];
+    return this.cache[fileName];
   }
 
   _outputHeader(fileName) {
     this.output.clear();
+    this.output.show(true);
     this.output.appendLine(fileName);
     this.output.appendLine('');
   }
