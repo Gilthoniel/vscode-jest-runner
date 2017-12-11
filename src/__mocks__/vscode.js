@@ -11,9 +11,13 @@ module.exports = {
       setDecorations: jest.fn(),
     },
 
+    onDidChangeActiveTextEditor: jest.fn(),
+
     createTextEditorDecorationType: jest.fn(() => {}),
 
     createOutputChannel: jest.fn(() => new OutputChannel()),
+
+    createStatusBarItem: jest.fn(() => new StatusBarItem())
   },
 
   workspace: {
@@ -39,6 +43,8 @@ module.exports = {
   OverviewRulerLane: {},
 
   DecorationRangeBehavior: {},
+
+  StatusBarAlignment: {},
 };
 
 class FileSystemWatcher {
@@ -59,5 +65,11 @@ class Command {
 class CodeLensProvider {
   constructor() {
     this.dispose = jest.fn();
+  }
+}
+
+class StatusBarItem {
+  constructor() {
+    this.show = jest.fn();
   }
 }

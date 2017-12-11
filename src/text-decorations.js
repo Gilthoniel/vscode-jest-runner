@@ -11,6 +11,8 @@ const FAILURE_DECORATOR = window.createTextEditorDecorationType({
     color: 'rgba(230,39,57,1)',
     contentText: '« error raised here',
   },
+  isWholeLine: true,
+  backgroundColor: 'rgba(255,0,0,0.1)',
   rangeBehavior: DecorationRangeBehavior.ClosedClosed,
 });
 
@@ -22,6 +24,8 @@ const SUCCESS_DECORATOR = window.createTextEditorDecorationType({
     color: 'rgba(63,176,172,1)',
     contentText: '« success',
   },
+  isWholeLine: true,
+  backgroundColor: 'rgba(0,255,0,0.1)',
   rangeBehavior: DecorationRangeBehavior.ClosedClosed,
 });
 
