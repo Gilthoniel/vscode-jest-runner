@@ -25,7 +25,8 @@
     },
     "scripts": {
         "postinstall": "node ./node_modules/vscode/bin/install",
-        "test": "jest --config jest.json"
+        "test": "jest --config jest.json",
+        "package": "vsce package"
     },
     "devDependencies": {
         "@types/jest": "^21.1.8",
@@ -34,6 +35,7 @@
         "eslint-plugin-jest": "^21.4.2",
         "jest": "^21.2.1",
         "typescript": "^2.6.1",
+        "vsce": "^1.35.0",
         "vscode": "^1.1.6"
     },
     "dependencies": {
