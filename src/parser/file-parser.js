@@ -2,6 +2,8 @@ const { Range } = require('vscode');
 const babylon = require('babylon');
 const has = require('has');
 
+const IT_REGEX = /^[xf]?it$/;
+
 class FileParser {
   constructor() {
     this.cache = {};
@@ -98,7 +100,7 @@ class FileParser {
         document.positionAt(callee.end)
       );
 
-      return [{ range, statement }];
+      return [{ range, statement, callee }];
     }
 
     return Object.keys(statement).reduce((array, key) => {
@@ -122,7 +124,7 @@ class FileParser {
     return (
       statement.type === 'ExpressionStatement'
       && statement.expression.type === 'CallExpression'
-      && statement.expression.callee.name === 'it'
+      &&  IT_REGEX.test(statement.expression.callee.name)
     );
   }
 
