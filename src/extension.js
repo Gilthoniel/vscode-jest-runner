@@ -4,7 +4,10 @@ const CodeLensProvider = require('./codelens-provider');
 const CommandRunTest = require('./commands/command-test');
 const CommandShowDetails = require('./commands/command-show-details');
 const JestRunner = require('./jest-runner');
+const StatusIndicator = require('./status-indicator');
 const FileParser = require('./parser/file-parser');
+
+const TEST_FILE_REGEX = /.*\.test\.jsx?$/;
 
 /**
  * Extension context
@@ -29,6 +32,16 @@ const Extension = {
       'jest-runner.show-details',
       CommandShowDetails
     ));
+
+    /* StatusIndicator */
+    StatusIndicator.init();
+    vscode.window.onDidChangeActiveTextEditor((editor) => {
+      if (TEST_FILE_REGEX.test(editor.document.fileName)) {
+        StatusIndicator.update();
+      } else {
+        StatusIndicator.none();
+      }
+    });
 
     /* FileWatcher */
     Extension.watcher = vscode.workspace.createFileSystemWatcher('**/*.test.{js,jsx}', true, false, true);
