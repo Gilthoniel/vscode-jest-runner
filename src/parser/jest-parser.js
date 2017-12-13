@@ -1,8 +1,10 @@
 
 module.exports = (stdout) => {
-  const json = stdout.split('\n')[4];
-
-  return new JestResults(JSON.parse(json));
+  try {
+    return new JestResults(JSON.parse(stdout));
+  } catch(e) {
+    return null;
+  }
 }
 
 class JestResults {

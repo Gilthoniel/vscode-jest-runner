@@ -1,4 +1,4 @@
-const { exec } = require('child_process');
+const { spawn } = require('child_process');
 const vscode = require('vscode');
 
 const JestParser = require('./parser/jest-parser');
@@ -36,6 +36,23 @@ class JestRunner {
     );
   }
 
+  triggerUpdate(result, fileName) {
+    this._outputHeader(fileName);
+    if (result.hasRuntimeError()) {
+      this.output.appendLine('Tests end with a runtime error!');
+    } else if (result.hasFailure()) {
+      this.output.appendLine('Tests end with failures!');
+    } else {
+      this.output.appendLine('Tests end with success!');
+    }
+
+    this.output.appendLine(result.getMessage());
+
+    if (this.codeLensProvider) {
+      this.codeLensProvider.update(result);
+    }
+  }
+
   run(fileName, nocache = false) {
     this._outputHeader(fileName);
     this.output.appendLine('Running tests ... (might take some time)');
@@ -47,31 +64,25 @@ class JestRunner {
     }
 
     this.cache[fileName] = new Promise((resolve, reject) => {
-      // TODO: switch to spawn
-      exec(`CI=true npm test -- --json ${fileName}`, { cwd: workspace }, (err, stdout) => {
-        if (err) {
-          reject(err);
-          return;
+      const env = Object.assign({}, process.env, { CI: true });
+      const proc = spawn('npm', ['test', '--', '--json', fileName], { cwd: workspace, env });
+      let isResolved = false;
+
+      proc.stdout.on('data', (data) => {
+        const result = JestParser(data.toString());
+        if (result) {
+          // Can trigger several buffers but only one with the actual json
+          this.triggerUpdate(result, fileName);
+          resolve(result);
+          isResolved = true;
         }
+      });
 
-        const result = JestParser(stdout);
-
-        this._outputHeader(fileName);
-        if (result.hasRuntimeError()) {
-          this.output.appendLine('Tests end with a runtime error!');
-        } else if (result.hasFailure()) {
-          this.output.appendLine('Tests end with failures!');
-        } else {
-          this.output.appendLine('Tests end with success!');
+      proc.on('close', () => {
+        if (!isResolved) {
+          // return code doesn't matter if we don't have results
+          reject();
         }
-
-        this.output.appendLine(result.getMessage());
-
-        if (this.codeLensProvider) {
-          this.codeLensProvider.update(result);
-        }
-    
-        resolve(result);
       });
     });
 
