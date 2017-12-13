@@ -1,6 +1,6 @@
 {
     "name": "vscode-jest-runner",
-    "displayName": "vscode-jest-runner",
+    "displayName": "Jest Runner",
     "description": "Run and check result of your Jest tests",
     "version": "0.0.1",
     "publisher": "Gilthoniel",
