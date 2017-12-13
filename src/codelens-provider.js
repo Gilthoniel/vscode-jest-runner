@@ -3,6 +3,7 @@ const { CodeLens, EventEmitter } = require('vscode');
 const FileParser = require('./parser/file-parser');
 const JestRunner = require('./jest-runner');
 const TestTextDecorations = require('./text-decorations');
+const ErrorHandler = require('./error-handler');
 
 const STATUS_NONE = 'None';
 const STATUS_FAIL = 'Fail';
@@ -111,7 +112,10 @@ class ItStatusCodeLens extends CodeLens {
     const exec = JestRunner.has(this.document.fileName);
 
     if (exec) {
-      return exec.then(this.updateFromResult.bind(this));
+      return exec.then(
+        this.updateFromResult.bind(this),
+        ErrorHandler.handle
+      );
     }
 
     this.command = { title: STATUS_NONE };
@@ -123,7 +127,7 @@ class ItStatusCodeLens extends CodeLens {
   }
 
   updateFromResult(result) {
-    if (result.getTestResult(this.index).hasFailed()) {
+    if (result.hasRuntimeError() || result.getTestResult(this.index).hasFailed()) {
       this.command = { title: STATUS_FAIL };
     } else {
       this.command = { title: STATUS_SUCCESS };
@@ -162,7 +166,10 @@ class StatusCodeLens extends CodeLens {
     const exec = JestRunner.has(this.document.fileName);
 
     if (exec) {
-      return exec.then(this.updateFromResult.bind(this));
+      return exec.then(
+        this.updateFromResult.bind(this),
+        ErrorHandler.handle
+      );
     }
 
     // Test has not been run yet
@@ -177,7 +184,7 @@ class StatusCodeLens extends CodeLens {
   updateFromResult(result) {
     this.command = this.command || {};
 
-    if (result.hasFailure()) {
+    if (result.hasRuntimeError() || result.hasFailure()) {
       this.command.title = STATUS_FAIL;
     } else {
       this.command.title = STATUS_SUCCESS;

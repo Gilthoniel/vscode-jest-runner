@@ -15,6 +15,10 @@ class JestResults {
     return this.getNumFailure() > 0;
   }
 
+  hasRuntimeError() {
+    return this.result.numRuntimeErrorTestSuites > 0;
+  }
+
   getNumFailure() {
     return this.result.numFailedTests;
   }

@@ -6,6 +6,7 @@ const CommandShowDetails = require('./commands/command-show-details');
 const JestRunner = require('./jest-runner');
 const StatusIndicator = require('./status-indicator');
 const FileParser = require('./parser/file-parser');
+const ErrorHandler = require('./error-handler');
 
 const TEST_FILE_REGEX = /.*\.test\.jsx?$/;
 
@@ -33,6 +34,9 @@ const Extension = {
       CommandShowDetails
     ));
 
+    const output = vscode.window.createOutputChannel('Jest Test Runner');
+    ErrorHandler.output = output;
+
     /* StatusIndicator */
     StatusIndicator.init();
     vscode.window.onDidChangeActiveTextEditor((editor) => {
@@ -49,7 +53,7 @@ const Extension = {
 
     /* Providers */
     JestRunner.codeLensProvider = new CodeLensProvider();
-    JestRunner.output = vscode.window.createOutputChannel('Jest Test Runner');
+    JestRunner.output = output;
 
     Extension.codeLensProvider = vscode.languages.registerCodeLensProvider(
       { language: 'javascript', pattern: '**/*.test.{js,jsx}' },

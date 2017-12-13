@@ -1,6 +1,7 @@
 const { window, StatusBarAlignment } = require('vscode');
 
 const JestRunner = require('./jest-runner');
+const ErrorHandler = require('./error-handler');
 
 const PREFIX = 'Jest Runner: ';
 
@@ -26,15 +27,21 @@ class StatusIndicator {
     const { fileName } = window.activeTextEditor.document;
 
     if (JestRunner.has(fileName)) {
-      JestRunner.has(fileName).then((result) => {
-        if (result.hasFailure()) {
-          this.status.text = `${PREFIX}$(x) ${result.getNumFailure()} fail(s)`;
-          this.status.color = 'rgba(230,39,57,1)';
-        } else {
-          this.status.text = `${PREFIX}$(check) ${result.getNumSuccess()} success(es)`;
-          this.status.color = 'rgba(63,176,172,1)';
-        }
-      });
+      JestRunner.has(fileName).then(
+        (result) => {
+          if (result.hasRuntimeError()) {
+            this.status.text = `${PREFIX}Runtime error`;
+            this.status.color = 'rgba(230,39,57,1)';
+          } else if (result.hasFailure()) {
+            this.status.text = `${PREFIX}$(x) ${result.getNumFailure()} fail(s)`;
+            this.status.color = 'rgba(230,39,57,1)';
+          } else {
+            this.status.text = `${PREFIX}$(check) ${result.getNumSuccess()} success(es)`;
+            this.status.color = 'rgba(63,176,172,1)';
+          }
+        },
+        ErrorHandler.handle
+      );
       return;
     }
 

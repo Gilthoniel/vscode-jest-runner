@@ -2,6 +2,7 @@ const { window, OverviewRulerLane, DecorationRangeBehavior } = require('vscode')
 
 const FileParser = require('./parser/file-parser');
 const JestRunner = require('./jest-runner');
+const ErrorHandler = require('./error-handler');
 
 const FAILURE_DECORATOR = window.createTextEditorDecorationType({
   overviewRulerColor: 'rgba(230,39,57,1)',
@@ -9,7 +10,20 @@ const FAILURE_DECORATOR = window.createTextEditorDecorationType({
   after: {
     margin: '0 0 0 10px',
     color: 'rgba(230,39,57,1)',
-    contentText: '« error raised here',
+    contentText: '« Error raised here',
+  },
+  isWholeLine: true,
+  backgroundColor: 'rgba(255,0,0,0.1)',
+  rangeBehavior: DecorationRangeBehavior.ClosedClosed,
+});
+
+const RUNTIME_ERROR_DECORATOR = window.createTextEditorDecorationType({
+  overviewRulerColor: 'rgba(230,39,57,1)',
+  overviewRulerLane: OverviewRulerLane.Center,
+  after: {
+    margin: '0 0 0 10px',
+    color: 'rgba(230,39,57,1)',
+    contentText: '« Runtime error',
   },
   isWholeLine: true,
   backgroundColor: 'rgba(255,0,0,0.1)',
@@ -22,7 +36,7 @@ const SUCCESS_DECORATOR = window.createTextEditorDecorationType({
   after: {
     margin: '0 0 0 10px',
     color: 'rgba(63,176,172,1)',
-    contentText: '« success',
+    contentText: '« Success',
   },
   isWholeLine: true,
   backgroundColor: 'rgba(0,255,0,0.1)',
@@ -46,7 +60,10 @@ class TestTextDecorations {
       return;
     }
 
-    return exec.then((result) => this.updateWithResult(result, editor));
+    return exec.then(
+      (result) => this.updateWithResult(result, editor),
+      ErrorHandler.handle
+    );
   }
 
   /**
@@ -59,8 +76,14 @@ class TestTextDecorations {
     const describes = FileParser.parse(document);
 
     const reducer = (ranges, describe) => {
+      if (result.hasRuntimeError()) {
+        ranges.runtimes.push(describe.range);
+        return ranges;
+      }
+
       describe.tests.forEach((test) => {
         const testResult = result.getTestResult(test.index);
+        
         if (testResult.hasPassed()) {
           // If the test has passed, we only add a decoration after the it
           const line = document.lineAt(test.range.start);
@@ -77,9 +100,10 @@ class TestTextDecorations {
       return ranges;
     };
 
-    const ranges = describes.reduce(reducer, { failures: [], successes: [] });
+    const ranges = describes.reduce(reducer, { failures: [], runtimes: [], successes: [] });
 
     editor.setDecorations(FAILURE_DECORATOR, ranges.failures);
+    editor.setDecorations(RUNTIME_ERROR_DECORATOR, ranges.runtimes);
     editor.setDecorations(SUCCESS_DECORATOR, ranges.successes);
   }
 

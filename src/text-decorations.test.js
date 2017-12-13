@@ -36,6 +36,6 @@ describe('text-decorations', () => {
     const instance = new TestTextDecorations();
     instance.update().then(() => {
       expect(vscode.window.activeTextEditor.setDecorations).toHaveBeenCalledTimes(2);
-    }).catch(console.log);
+    });
   });
 });
